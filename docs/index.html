@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        * {
+            /* Style the scrollbar */
+            ::-webkit-scrollbar {
+                width: 15px;
+            }
+            ::-webkit-scrollbar-track {
+                background-color: rgba(54, 255, 27, 0.062);
+            }
+            ::-webkit-scrollbar-thumb {
+                background-color: rgba(54, 255, 27, 0.62);
+                border-radius: 3px;
+            }
+
+            font-size: 15pt;
+            color: rgb(53, 255, 27);
+            background-color: black;
+            font-family: monospace;
+            cursor: none;
+
+            /* Prevent text selection: */
+            -moz-user-select: -moz-none;
+            -khtml-user-select: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        #text {
+            border-radius: 30px;
+            padding: 1% 5% 1% 5%;
+            width: 90%;
+            height: 100%;
+            overflow-x: hidden;
+            overflow-y: auto;
+        }
+
+        #command {
+            position: fixed;
+            bottom: 20%;
+            right: -1%;
+            border: 2px solid rgb(53, 255, 27);
+            border-radius: 5px;
+            border-right-width: 0;
+            padding: 1%;
+            padding-right: 2%;
+            font-size: 16pt;
+            z-index: 2;
+            cursor: url("writershaven-cursor.cur"), url("writershaven-cursor.ico"), default;
+        }
+
+        #fade {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(54, 255, 27, 0.075);
+            cursor: url("writershaven-cursor.cur"), url("writershaven-cursor.ico"), default;
+        }
+
+        #bottom-padding {
+            height: 60px;
+            width: 100%;
+            display: block;
+        }
+
+        .quote {
+            width: 100%;
+            border-left: 2px solid rgb(53, 255, 27);
+            border-radius: 3px;
+            background-color: rgba(54, 255, 27, 0.062);
+            padding: 1%;
+            margin: 1% 0 1% 0;
+        }
+
+        .h1 .h2 .h3 .h4 .h5 .h6 {
+            padding-bottom: 0;
+            margin-bottom: 0;
+            background-color: transparent;
+        }
+
+        .h1 {
+            font-size: 25pt;
+        }
+
+        .h2 {
+            font-size: 21pt;
+        }
+
+        .h3 {
+            font-size: 19pt;
+        }
+
+        .h4 {
+            font-size: 17pt;
+        }
+
+        .h5 {
+            font-size: 15pt;
+        }
+
+        .h6 {
+            font-size: 13pt;
+        }
+
+        label {
+            position: fixed;
+            top: 40%;
+            left: 40%;
+            padding: 5%;
+            width: 10%;
+            height: 10%;
+            z-index: 2;
+            border: 2px solid rgb(53, 255, 27);
+            border-radius: 7px;
+            text-align: center;
+            cursor: url("writershaven-cursor.cur"), url("writershaven-cursor.ico"), default;
+        }
+
+        hr {
+            border: 1px solid rgb(53, 255, 27);
+        }
+    </style>
+    <script>
+        window.onload = () => { window.t = document.getElementById("text"); window.c = document.getElementById("command"); formatText() };
+        let a = "AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZz 1234567890,.!?-_=+@#$%^&*()/:;[]{}<>|~\\\'\"\`\n";
+        let commandBool = false;
+        let command = "";
+        let text = "This is placeholder text.";
+        // NOTE: change the text variable to the starter text.
+        function executeCommand(cmd) {
+            console.log(command);
+            let after = undefined;
+            switch (command.toLowerCase()) {
+                case "fullscreen":
+                    document.body.requestFullscreen();
+                    break;
+                case "clear":
+                    after = () => { text = "" };
+                    break;
+                case "save":
+                    let encryptedText = "";
+                    let n = 0;
+                    console.log(text);
+                    for (char of text) {
+                        encryptedText += (a.indexOf(char).toString().length == 1) ? "0" + a.indexOf(char).toString() : a.indexOf(char);
+                    }
+                    console.log(encryptedText);
+                    let link = document.createElement("a");
+                    link.href = "data:type=text/hvn;charset=utf-8," + encryptedText;
+                    link.download = "mydocument.hvn";
+                    link.click();
+                    break;
+                case "open":
+                    let btn = document.createElement("label");
+                    let input = document.createElement("input");
+                    let container = document.getElementById("loadButton");
+                    input.hidden = true;
+                    btn.innerText = "upload .hvn file";
+                    input.type = "file";
+                    input.id = "file";
+                    setTimeout(fade, 10);
+                    input.accept = ".hvn";
+                    btn.setAttribute("for", "file");
+                    input.onchange = () => {
+                        let reader = new FileReader();
+                        reader.onload = () => {
+                            let f = reader.result;
+                            let n = "";
+                            text = "";
+                            for (char of f) {
+                                n += char;
+                                if (n.length == 2) {
+                                    text += a[parseInt(n)];
+                                    n = "";
+                                }
+                            }
+                            formatText();
+                            container.innerHTML = "";
+                            window.loadingFile = false;
+                            unfade();
+                        }
+                        reader.readAsText(input.files[0]);
+                    }
+                    container.appendChild(input);
+                    container.appendChild(btn);
+                    window.loadingFile = true;
+                    break;
+                default:
+                    after = () => { text += "Unknown command. Use \"cmds\" for help.\n\n" };
+            }
+            text += "\n\n> " + command + "\n\n";
+            if (after != undefined) { after() } else { text += "\n" };
+            formatText();
+        }
+        window.oncontextmenu = (e) => {
+            e.preventDefault();
+        }
+        window.onkeydown = (e) => {
+            e.preventDefault();
+            let h = t.innerHTML;
+            let ch = c.innerHTML;
+            if (a.includes(e.key)) {
+                if (commandBool) {
+                    command += e.key;
+                    c.innerHTML = command;
+                    c.hidden = false;
+                } else {
+                    text += e.key;
+                }
+                formatText();
+            } else {
+                switch (e.key) {
+                    case "Control":
+                        fade();
+                        commandBool = true;
+                        break;
+                    case "Escape":
+                        if (commandBool) {
+                            commandBool = false;
+                            command = "";
+                            c.innerText = "";
+                            c.hidden = true;
+                            unfade();
+                        } else if (loadingFile) {
+                            loadingFile = false;
+                            unfade();
+                            document.getElementById("loadButton").innerHTML = "";
+                        }
+                        break;
+                    case "Enter":
+                        if (commandBool) {
+                            executeCommand(command);
+                            commandBool = false;
+                            command = "";
+                            c.innerText = "";
+                            c.hidden = true;
+                            unfade();
+                        } else {
+                            text += "\n";
+                        }
+                        formatText();
+                        break;
+                    case "Backspace":
+                        let txt = "";
+                        if (commandBool) {
+                            for (i = 0; i < command.length - 1; i++) {
+                                txt += command[i];
+                            }
+                            if (txt == "") {
+                                commandBool = false;
+                                c.hidden = true;
+                                unfade();
+                            }
+                            command = txt;
+                            c.innerHTML = txt;
+                        } else {
+                            for (i = 0; i < text.length - 1; i++) {
+                                txt += text[i];
+                            }
+                            text = txt;
+                            formatText();
+                        }
+
+                        break;
+                    default:
+                    // console.log(e.key);
+                }
+            }
+        }
+        function formatText() { // This adds features like MarkDown to the app.
+            let pendingHTML = "", lines = [], array = [], line = "", i = 0, ii = 0, hLevel = 1, cancelLine = false, escape = false, allMinus = true;
+            window.ends = [];
+
+            for (char of text) {
+                if (char == "\n") {
+                    lines.push(line);
+                    line = "";
+                } else {
+                    line += char;
+                }
+            }
+            lines.push(line);
+
+            for (line of lines) {
+                allMinus = line.length >= 3;
+                for (char of line) {
+                    allMinus = allMinus ? char == "-" : false;
+                }
+                if (allMinus) {
+                    pendingHTML += "<hr>";
+                } else {
+                    for (char of line) {
+                        if (ii == 0 && char == ">" && line[1] == " " && !ends.includes("quote")) { // Quotes
+                            ends.push("quoting");
+                            pendingHTML += "<div class=\"quote\">&zwnj;";
+                        } else if (ii == 1 && ends.includes("quoting")) {
+                            ends.map(i => { if (i != "quoting") { array.push(i) } else { array.push("quote") } });
+                            ends = array;
+                            array = [];
+                        } else if (ii == 0 && char == "#") { // Headings Start
+                            ends.push("h-");
+                            hLevel = 1;
+                        } else if (ii >= 1 && ii <= 6 && ends.includes("h-")) { // Heading Level
+                            if (char == "#") {
+                                hLevel++;
+                            } else if (char == " ") {
+                                ends.map(i => { if (i != "h-") { array.push(i) } else { array.push("h" + parseInt(hLevel)) } });
+                                pendingHTML += "<span class=\"h" + parseInt(hLevel) + "\">";
+                                ends = array;
+                                array = [];
+                            } else {
+                                ends.map(i => { if (i != "h-") { array.push(i) } });
+                                ends = array;
+                                array = [];
+                                for (i = 0; i < hLevel; i++) {
+                                    pendingHTML += "#";
+                                }
+                                if (ii == 1) pendingHTML += char;
+                            }
+                        } else if (escape) {
+                            switch (char) { // Non-formatting characters:
+                                case "&":
+                                    pendingHTML += "&amp;";
+                                    break;
+                                case "<":
+                                    pendingHTML += "&lt;";
+                                    break;
+                                case ">":
+                                    pendingHTML += "&gt;";
+                                    break;
+                                default:
+                                    pendingHTML += char;
+                            }
+                            escape = false;
+                        } else {
+                            switch (char) { // Non-formatting characters:
+                                case "&":
+                                    pendingHTML += "&amp;";
+                                    break;
+                                case "<":
+                                    pendingHTML += "&lt;";
+                                    break;
+                                case ">":
+                                    pendingHTML += "&gt;";
+                                    break;
+                                case "\\":
+                                    if (ii < line.length - 1) {
+                                        escape = true;
+                                    } else {
+                                        pendingHTML += "\\";
+                                    }
+                                    break;
+                                default:
+                                    pendingHTML += char;
+                            }
+                        }
+                        ii++;
+                    }
+                    i++;
+                    ii = 0;
+                    if (ends.includes("quote") && (line == "" || i == lines.length - 1)) { // Ends evaluation
+                        pendingHTML += "</div>";
+                        ends.map(i => { if (i != "quote") array.push(i) });
+                        ends = array;
+                        array = [];
+                        cancelLine = true;
+                    }
+                    if (ends.includes("h1") || ends.includes("h2") || ends.includes("h3") || ends.includes("h4") || ends.includes("h5") || ends.includes("h6")) {
+                        pendingHTML += "</span>";
+                        ends.map(i => { if (!(i == "h1" || i == "h2" || i == "h3" || i == "h4" || i == "h5" || i == "h6")) array.push(i) });
+                        ends = array;
+                        array = [];
+                    } else if (ends.includes("h-")) {
+                        ends.map(i => { if (i != "h-") array.push(i) });
+                        ends = array;
+                        array = [];
+                           pendingHTML += line;
+                    }
+                    if (i < lines.length && !cancelLine) {
+                        pendingHTML += "<br>";
+                    } else if (cancelLine) {
+                        cancelLine = false;
+                    }
+                }
+            }
+            t.innerHTML = pendingHTML;
+        }
+        function fade() {
+            document.getElementById("fade").hidden = false;
+        }
+        function unfade() {
+            document.getElementById("fade").hidden = true;
+        }
+    </script>
+    <title>Writer's Haven</title>
+</head>
+
+<body>
+    <div id="text"></div> <!--Use this to display typed text.-->
+    <div id="fade" hidden></div> <!--Use this to fade the document.-->
+    <div id="command" hidden></div> <!--Use this to display commands.-->
+    <div id="loadButton"></div> <!--Use this to add a load button.-->
+    <div id="bottom-padding">&zwnj;</div> <!--Use this to add some padding to the bottom.-->
+</body>
+
+</html>
